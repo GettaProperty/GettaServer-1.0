@@ -5,6 +5,7 @@ module.exports = router
 
 router.post('/getuser',getuser)
 router.post('/adduser',adduser)
+router.post('/addresponse',addresponse)
 
 async function getuser(req,res){
     database.collection('users').find(req.body).toArray()
@@ -18,5 +19,11 @@ async function adduser(req,res){
     database.collection('users').insertOne(req.body)
     .then(response => res.send(response.insertedId))
     .catch(err => res.status(400).send(err.message))
+}
+
+async function addresponse(req,res){
+    database.collection('user_responses').insertOne(req.body)
+    .then(response => res.send({status:"success"}))
+    .catch(err => res.status(400).send({status:"failed"}))
 }
 

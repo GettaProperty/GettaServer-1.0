@@ -4,6 +4,8 @@ const { ObjectId } = require("mongodb")
 const { response } = require("express")
 const router = express.Router()
 const multer = require('multer')
+const fs = require('fs')
+const S3 = require('aws-sdk/clients/s3')
 module.exports = router
 
 router.post('/addproperty', addproperty)
@@ -18,12 +20,41 @@ router.post('/getbuilders', getbuilders)
 let Urlarray = []
 let prof_url = ''
 
+const s3 = new S3({
+    region : 'us-east-1',
+    accessKeyId : 'AKIAWG2LJFFAOPXSVNYM',
+    secretAccessKey : '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'
+})
+
+
+function uploadFile(file){
+    const fileStream = fs.createReadStream(file.path)
+
+    const uploadPrams = {
+        Bucket: 'gettaimages',
+        Body : fileStream,
+        Key: file.filename
+    }
+
+    return s3.upload(uploadPrams).promise()
+}
+
+
+function getfilestram(filekey) {
+    const downloadParams = {
+        Key : filekey,
+        Bucket: 'gettaimages'
+    }
+
+    return s3.getObject(downloadParams).createReadStream()
+}
+
 const storage = multer.diskStorage({
     destination: (req, file, callBack) => {
         callBack(null,'uploads/images')
     },
     filename: (req, file, callBack) => {
-        Urlarray.push(`http://localhost:7077/images/Getta_${file.fieldname}_${Date.now()/1000}_${file.originalname}`)
+        Urlarray.push(`http://api/images/Getta_${file.fieldname}_${Date.now()/1000}_${file.originalname}`)
         callBack(null, `Getta_${file.fieldname}_${Date.now()/1000}_${file.originalname}`)
     }
 })
@@ -116,11 +147,16 @@ router.post('/uploadProfileImage',upload_prof.single('image'),check_prof)
 
 
 async function check_prof(req,res){
-    res.status(200).send(JSON.stringify(prof_url))
+    let result = await uploadFile(req.file)
+    res.status(200).send(JSON.stringify(result.Key))
     prof_url = ''
 }
 
 async function check(req, res) {
-    res.status(200).send(Urlarray)
-    Urlarray = []
+    let image_array = []
+    for(let i of req.files){
+        let result = await uploadFile(i)
+        image_array.push(result.Key)
+    }
+    res.status(200).send(image_array)
 }
